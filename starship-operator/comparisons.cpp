@@ -16,13 +16,15 @@ TEST_CASE("safe comparing integral numbers")
     // CHECK(x < y); // Error
     CHECK(std::cmp_less(x, y));
 
-    auto cmp_gt = [](auto x, auto y) {
+    auto cmp_gt = [](std::integral auto x, std::integral auto y) {
         return std::cmp_greater(x, y);
     };
     CHECK(cmp_gt(-7, 667u) == false);
 
     std::cout << std::in_range<std::size_t>(-1) << '\n';
     std::cout << std::in_range<std::size_t>(42) << '\n';
+
+    //CHECK(cmp_gt("abc"s, "def"s)); // contrained not satisfied
 }
 
 ///////////////////////////////////////////////////////////////
