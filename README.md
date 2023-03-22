@@ -1,5 +1,9 @@
 # Szkolenie - C++20 #
 
+## Slajdy
+
+* https://infotraining.bitbucket.io/cpp-20
+
 ## Konfiguracja środowiska
 
 ### Lokalna

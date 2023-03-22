@@ -3,7 +3,14 @@
 #include <vector>
 #include <string>
 
+#include "../helpers.hpp"
+
 using namespace std::literals;
+
+TEST_CASE("safe comparing integral numbers")
+{
+    
+}
 
 TEST_CASE("operator ==")
 {
