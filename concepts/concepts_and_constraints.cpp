@@ -349,13 +349,13 @@ static_assert(!LargeIntegral<double>);
 ////////////////////////////////////////
 // compound requirements
 
-template <typename T>
-concept Indexable = requires (T obj, size_t n) {
-    { obj[n] } -> std::same_as<typename T::reference>;
-    { obj.at(n) } -> std::same_as<typename T::reference>;
-    { obj.size() } noexcept -> std::convertible_to<size_t>;
-    { obj.~T() } noexcept;
-};
+// template <typename T>
+// concept Indexable = requires (T obj, size_t n) {
+//     { obj[n] } -> std::same_as<typename T::reference>;
+//     { obj.at(n) } -> std::same_as<typename T::reference>;
+//     { obj.size() } noexcept -> std::convertible_to<size_t>;
+//     { obj.~T() } noexcept;
+// };
 
 template <typename T>
 concept AdditiveRange = requires (T&& c) {
@@ -380,10 +380,48 @@ TEST_CASE("AdditiveRange")
 
 //////////////////////////////////////////////////
 // Exercise 2
+template<typename T>
+    concept Indexable = requires(T cont, size_t index)
+    {
+        cont[index];
+    };
+
+template<typename T>
+concept Reference = std::is_reference_v<T>;
+
+template<typename T>
+concept IndexableWRef = Indexable<T> && requires(T cont, size_t index)
+{
+    { cont[index] } -> Reference; 
+};
+
+template <typename T>
+concept StdContainer = requires(T container) {
+    typename T::value_type;
+    typename T::iterator;
+    typename T::const_iterator;
+    container.begin();
+    container.end();    
+};
+
+template <typename T>
+concept IndexableContainer = Indexable<T> && StdContainer<T>;
+
+template <typename T>
+concept SizedStdContainer = StdContainer<T> && requires(T container) {
+    { container.size() } -> std::same_as<typename T::size_type>; 
+};
 
 TEST_CASE("StdContainer concept")
 {
     static_assert(Indexable<int[10]>);
+
+    std::vector<int> vec;
+    static_assert(IndexableWRef<decltype(vec)>);
+    static_assert(IndexableWRef<int[10]>);
+
+    std::vector<bool> vbool;
+    static_assert(!IndexableWRef<decltype(vbool)>);
 
     static_assert(StdContainer<std::vector<int>>);
     static_assert(StdContainer<std::list<int>>);
@@ -394,4 +432,32 @@ TEST_CASE("StdContainer concept")
     static_assert(IndexableContainer<std::vector<int>>);
     static_assert(!IndexableContainer<std::list<int>>);
     static_assert(IndexableContainer<std::map<int, std::string>>);
+}
+
+
+////////////////////////////////////////////////
+// subsuming concepts
+
+void print_container(StdContainer auto const& container)
+{
+    std::cout << "items: [ ";
+    for(const auto& item : container)
+        std::cout << item << " ";
+    std::cout << "]\n";
+}
+
+void print_container(SizedStdContainer auto const& container)
+{
+    std::cout << container.size() << " items: [ ";
+    for(const auto& item : container)
+        std::cout << item << " ";
+    std::cout << "]\n";
+}
+
+#include <forward_list>
+
+TEST_CASE("subsuming concepts")
+{
+    print_container(std::vector{1, 2, 3});
+    print_container(std::forward_list{1, 2, 3});
 }
