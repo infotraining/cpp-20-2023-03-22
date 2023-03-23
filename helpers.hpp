@@ -1,18 +1,22 @@
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
 
-#include <string_view>
 #include <iostream>
+#include <string_view>
 
 namespace Helpers
 {
-    void print(auto&& rng, std::string_view prefix = "items")
-    {   
-        std::cout << prefix << ": [ ";
-        for(const auto& item : rng)
-            std::cout << item << " ";
-        std::cout << "]\n"; 
-    }
-}
+    template <typename T>
+    concept PrintableRange = std::ranges::range<T>
+        && requires { std::cout << std::declval<std::ranges::range_value_t<T>>(); };
 
-#endif  //HELPERS_HPP
+    void print(PrintableRange auto&& rng, std::string_view prefix = "items")
+    {
+        std::cout << prefix << ": [ ";
+        for (const auto& item : rng)
+            std::cout << item << " ";
+        std::cout << "]\n";
+    }
+} // namespace Helpers
+
+#endif // HELPERS_HPP
