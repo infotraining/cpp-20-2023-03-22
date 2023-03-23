@@ -3,6 +3,9 @@
 
 #include <iostream>
 #include <string_view>
+#include <random>
+#include <ranges>
+#include <algorithm>
 
 namespace Helpers
 {
@@ -16,6 +19,18 @@ namespace Helpers
         for (const auto& item : rng)
             std::cout << item << " ";
         std::cout << "]\n";
+    }
+
+    std::vector<int> create_numeric_dataset(size_t size, int low = -100, int high = 100)
+    {
+        std::vector<int> data(size);
+
+        std::mt19937 rnd_gen{42};
+        std::uniform_int_distribution<> distr(low, high);
+
+        std::ranges::generate(data, [&]{ return distr(rnd_gen);});
+
+        return data;
     }
 } // namespace Helpers
 
