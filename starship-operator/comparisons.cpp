@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 using namespace std::literals;
 
@@ -167,9 +168,9 @@ TEST_CASE("operator <=>")
     {
         int x = 42;
 
-        CHECK(x <=> 42 == 0); // x == 42
-        CHECK(x <=> 665 < 0); // x < 665
-        CHECK(x <=> 22 > 0);  // x > 22
+        CHECK((x <=> 42 == 0)); // x == 42
+        CHECK((x <=> 665 < 0)); // x < 665
+        CHECK((x <=> 22 > 0));  // x > 22
 
         std::strong_ordering result = 55 <=> 77;
         CHECK(result == std::strong_ordering::less);

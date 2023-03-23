@@ -1,10 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
+#include <complex>
 #include <iostream>
+#include <list>
 #include <map>
+#include <memory>
 #include <source_location>
 #include <string>
+#include <string_view>
 #include <vector>
-#include <complex>
+#include <numeric>
+#include "../helpers.hpp"
 
 using namespace std::literals;
 
@@ -49,6 +54,7 @@ namespace Classics
     // }
 } // namespace Classics
 
+// athe same but with abbreviated template syntax
 decltype(auto) call_wrapper(auto&& f, auto&&... args)
 {
     auto src_loc = std::source_location::current();
@@ -193,14 +199,40 @@ namespace ver_3
     }
 } // namespace ver_3
 
+namespace ver_4
+{
+    template <typename T>
+        requires(!Pointer<T> && std::three_way_comparable<T>)
+    T max_value(T a, T b)
+    {
+        return a < b ? b : a;
+    }
+
+    auto max_value(Pointer auto a, Pointer auto b)
+        requires std::three_way_comparable_with<decltype(*a), decltype(*b)> // trailing requires clause
+    {
+        assert(a != nullptr);
+        assert(b != nullptr);
+
+        return max_value(*a, *b);
+    }
+} // namespace ver_4
+
 template <typename T>
-    requires(!Pointer<T> && std::three_way_comparable<T>)
+concept LikePointer = requires(T ptr) {
+                          *ptr;
+                          ptr == nullptr;
+                          ptr != nullptr;
+                      };
+
+template <typename T>
+    requires(!LikePointer<T> && std::three_way_comparable<T>)
 T max_value(T a, T b)
 {
     return a < b ? b : a;
 }
 
-auto max_value(Pointer auto a, Pointer auto b)
+auto max_value(LikePointer auto a, LikePointer auto b)
     requires std::three_way_comparable_with<decltype(*a), decltype(*b)> // trailing requires clause
 {
     assert(a != nullptr);
@@ -216,14 +248,150 @@ TEST_CASE("constraints & concepts")
     CHECK(max_value(x, y) == 42);
 
     std::integral auto result_1 = max_value(x, y);
-    //std::integral auto result_2 = max_value(6.7, 7.22); // the constraint was not satisfied
-}
+    // std::integral auto result_2 = max_value(6.7, 7.22); // the constraint was not satisfied
 
     CHECK(max_value(&x, &y) == 42);
 
     CHECK(max_value(std::string("abc"), std::string("def")) == "def"s);
 
-    std::complex<double> c1{1.0, 5.4};
-    std::complex<double> c2{6.7, 9.9};
-    //CHECK(max_value(c1, c2)); // the constraint was not satisfied
+     std::complex<double> c1{1.0, 5.4};
+    // std::complex<double> c2{6.7, 9.9};
+    // CHECK(max_value(c1, c2)); // the constraint was not satisfied
+
+    auto sp_a = std::make_shared<int>(18);
+    auto sp_b = std::make_shared<int>(42);
+    CHECK(max_value(sp_a, sp_b) == 42);
+}
+
+/////////////////////////////////////////
+// examples of concepts
+
+template <typename T>
+concept Hashable = requires(T a) {
+                       { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
+                   };
+
+static_assert(Hashable<int>);
+//static_assert(Hashable<std::complex<double>>);
+
+TEST_CASE("printable range")
+{
+    Helpers::print(std::vector{1, 2, 3}, "vec");
+    //Helpers::print(std::map<int, std::string>{{1, "one"}}, "map");
+}
+
+template <typename T>
+struct Holder
+{
+    T obj;
+
+    void print() const requires Helpers::PrintableRange<T>
+    {
+        Helpers::print(obj, "items");
+    }
+};
+
+TEST_CASE("Holder")
+{
+    Holder<int> h1{42};
+    //h1.print();
+
+    Holder<std::vector<int>> h2{std::vector{1, 2, 3}};
+    h2.print();   
+}
+
+///////////////////////////////////////////////////
+// exercise 1
+
+
+auto is_power_of_2(std::integral auto value)
+{
+    return value > 0 && (value & (value - 1)) == 0;
+}
+
+template <std::floating_point T>
+auto is_power_of_2(T value)
+{
+    int exponent;
+    const T mantissa = std::frexp(value, &exponent);
+    return mantissa == static_cast<T>(0.5);
+}
+
+TEST_CASE("is_power_of_2")
+{
+    REQUIRE(is_power_of_2(4));
+    REQUIRE(is_power_of_2(8));
+    REQUIRE(is_power_of_2(32));
+    REQUIRE(is_power_of_2(77) == false);
+
+    REQUIRE(is_power_of_2(8.0));
+}
+
+////////////////////////////////////////
+// Catch with requires
+
+template <typename T>
+concept BadLargeIntegral = requires {
+    std::is_integral_v<T>; // syntax is correct
+    sizeof(T) >= 4; // syntax is correct
+};
+
+template <typename T>
+concept LargeIntegral = std::integral<T> && requires {
+    requires sizeof(T) >= 4;
+};
+
+static_assert(!LargeIntegral<char>);
+static_assert(LargeIntegral<int>);
+static_assert(!LargeIntegral<double>);
+
+
+////////////////////////////////////////
+// compound requirements
+
+template <typename T>
+concept Indexable = requires (T obj, size_t n) {
+    { obj[n] } -> std::same_as<typename T::reference>;
+    { obj.at(n) } -> std::same_as<typename T::reference>;
+    { obj.size() } noexcept -> std::convertible_to<size_t>;
+    { obj.~T() } noexcept;
+};
+
+template <typename T>
+concept AdditiveRange = requires (T&& c) {
+    std::ranges::begin(c);
+    std::ranges::end(c); 
+    typename std::ranges::range_value_t<T>; // type requirement
+    requires requires(std::ranges::range_value_t<T> x) { x + x; }; // nested requirement
+};
+ 
+template <AdditiveRange Rng>
+auto sum(const Rng& data)
+{
+    return std::accumulate(std::begin(data), std::end(data), 
+        std::ranges::range_value_t<Rng>{});
+}
+
+TEST_CASE("AdditiveRange")
+{ 
+    assert(sum(std::vector{1, 2, 3}) == 6);
+    //assert(sum(std::vector{ "one", "two", "three" }) == "onetwothree"s);
+}
+
+//////////////////////////////////////////////////
+// Exercise 2
+
+TEST_CASE("StdContainer concept")
+{
+    static_assert(Indexable<int[10]>);
+
+    static_assert(StdContainer<std::vector<int>>);
+    static_assert(StdContainer<std::list<int>>);
+    static_assert(StdContainer<std::string>);
+    static_assert(StdContainer<std::string_view>);
+    static_assert(!StdContainer<int[10]>);
+
+    static_assert(IndexableContainer<std::vector<int>>);
+    static_assert(!IndexableContainer<std::list<int>>);
+    static_assert(IndexableContainer<std::map<int, std::string>>);
 }
