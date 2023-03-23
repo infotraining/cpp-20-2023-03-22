@@ -1,11 +1,12 @@
+#include "../helpers.hpp"
+
+#include <algorithm>
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
-#include <vector>
-#include <string>
 #include <ranges>
-#include <algorithm>
-
-#include "../helpers.hpp"
+#include <string>
+#include <vector>
 
 using namespace std::literals;
 
@@ -26,12 +27,12 @@ TEST_CASE("algorithms")
     std::ranges::sort(ds);
     print(ds, "ds sorted");
 
-    Value vs[] = { Value{6}, Value{2}, Value{42} };
+    Value vs[] = {Value{6}, Value{2}, Value{42}};
     std::ranges::sort(vs);
 
     CHECK(std::ranges::is_sorted(vs));
 
-    std::vector<std::string> words = { "zero", "one", "ten", "twenty", "two", "three", "four" };
+    std::vector<std::string> words = {"zero", "one", "ten", "twenty", "two", "three", "four"};
 
     std::ranges::sort(words);
     print(words, "words");
@@ -52,7 +53,7 @@ struct EndValue
 
 TEST_CASE("algorithms with sentinels")
 {
-    std::vector vec = {1, 2, 3, 4, 5, 42, 6, 7, 8, 9, 10, };
+    std::vector vec = {1, 2, 3, 4, 5, 42, 6, 7, 8, 9, 10};
 
     std::ranges::sort(vec.begin(), EndValue<42>{}, std::greater{});
     print(vec, "vec");
@@ -70,7 +71,7 @@ TEST_CASE("algorithms with sentinels")
 TEST_CASE("views")
 {
     std::vector ds = create_numeric_dataset(20);
-    
+
     SECTION("all")
     {
         print(ds, "ds");
@@ -98,7 +99,7 @@ TEST_CASE("views")
     {
         auto numbers = std::views::iota(1) | std::views::take(20);
 
-        auto first_5 = std::views::take(std::views::transform(numbers, [](int x) { return x * x;}), 5);
+        auto first_5 = std::views::take(std::views::transform(numbers, [](int x) { return x * x; }), 5);
 
         print(first_5, "first_5");
     }
@@ -108,9 +109,9 @@ TEST_CASE("views")
         auto numbers = std::views::iota(1, 20);
 
         auto first_5 = numbers
-                       | std::views::transform([](int x) { return x * x;})
-                       | std::views::filter([](int x) { return x % 2 == 0;})
-                       | std::views::take(5);
+            | std::views::transform([](int x) { return x * x; })
+            | std::views::filter([](int x) { return x % 2 == 0; })
+            | std::views::take(5);
 
         print(first_5, "first_5");
     }
@@ -121,7 +122,7 @@ TEST_CASE("views")
 
         auto head_ds = ds | std::views::drop(10);
 
-        for(auto& item : head_ds)
+        for (auto& item : head_ds)
             item = 0;
 
         print(ds, "ds");
@@ -130,37 +131,37 @@ TEST_CASE("views")
 
 namespace Views
 {
-// template <typename T>
-// concept PrintableRange = std::ranges::range<T>
-//     && requires { std::cout << std::declval<std::ranges::range_value_t<T>>(); };
+    // template <typename T>
+    // concept PrintableRange = std::ranges::range<T>
+    //     && requires { std::cout << std::declval<std::ranges::range_value_t<T>>(); };
 
-// void print(PrintableRange auto&& rng, std::string_view prefix = "items")
-// {
-//     std::cout << prefix << ": [ ";
-//     for (const auto& item : rng)
-//         std::cout << item << " ";
-//     std::cout << "]\n";
-// }
+    // void print(PrintableRange auto&& rng, std::string_view prefix = "items")
+    // {
+    //     std::cout << prefix << ": [ ";
+    //     for (const auto& item : rng)
+    //         std::cout << item << " ";
+    //     std::cout << "]\n";
+    // }
 
-template <typename T>
-concept PrintableView = std::ranges::view<T>
-    && requires { std::cout << std::declval<std::ranges::range_value_t<T>>(); };
-void print(PrintableView auto rng, std::string_view prefix = "items")
-{
-    std::cout << prefix << ": [ ";
-    for (const auto& item : rng)
-        std::cout << item << " ";
-    std::cout << "]\n";
-}
-}
+    template <typename T>
+    concept PrintableView = std::ranges::view<T>
+        && requires(std::ranges::range_value_t<T> obj) { std::cout << obj; };
+    void print(PrintableView auto rng, std::string_view prefix = "items")
+    {
+        std::cout << prefix << ": [ ";
+        for (const auto& item : rng)
+            std::cout << item << " ";
+        std::cout << "]\n";
+    }
+} // namespace Views
 
 TEST_CASE("passing views")
 {
     std::vector ds = create_numeric_dataset(20);
 
-    auto tail_ds = ds 
-                   | std::views::drop(10)
-                   | std::views::filter([](int x) { return x % 2 == 0;});
+    auto tail_ds = ds
+        | std::views::drop(10)
+        | std::views::filter([](int x) { return x % 2 == 0; });
 
     Views::print(tail_ds, "tail_ds");
 
@@ -174,7 +175,7 @@ TEST_CASE("borrowed iterator")
     {
         auto pos = std::ranges::find(create_numeric_dataset(20, 1, 10), 6);
 
-        //REQUIRE(*pos == 6); // ERROR - dangling iterator
+        // REQUIRE(*pos == 6); // Compilation ERROR - dangling iterator
     }
 
     SECTION("no dangling iterator")
@@ -182,6 +183,48 @@ TEST_CASE("borrowed iterator")
         auto&& temp = create_numeric_dataset(20, 1, 10);
         auto pos = std::ranges::find(temp, 6);
 
-        REQUIRE(*pos == 6); 
+        REQUIRE(*pos == 6);
     }
+}
+
+///////////////////////////////////////////////////////
+// Exercise
+
+std::pair<std::string_view, std::string_view> split(const std::string& line, std::string_view separator = "/")
+{
+    std::pair<std::string_view, std::string_view> result;
+
+    if (std::string::size_type pos = line.find(separator.data()); pos != std::string::npos)
+    {
+        result.first = std::string_view{line.begin(), line.begin() + pos};
+        result.second = std::string_view{line.begin() + pos + 1, line.end()};
+    }
+
+    return result;
+}
+
+TEST_CASE("Exercise - ranges")
+{
+    const std::vector<std::string> lines = {
+        "# Comment 1",
+        "# Comment 2",
+        "# Comment 3",
+        "1/one",
+        "2/two",
+        "\n",
+        "3/three",
+        "4/four",
+        "5/five",
+        "\n",
+        "\n",
+        "6/six"
+    };
+
+    auto result = lines;
+
+    auto expected_result = {"one"s, "two"s, "three"s, "four"s, "five"s, "six"s};
+
+    print(result, "result");
+
+    CHECK(std::ranges::equal(result, expected_result));
 }
