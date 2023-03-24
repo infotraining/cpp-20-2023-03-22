@@ -44,6 +44,7 @@ add_subdirectory(ranges)
 add_subdirectory(starship-operator)
 add_subdirectory(std-lib-cpp20)
 add_subdirectory(templates)
+add_subdirectory(multithreading)
 
 # Exercises
 # add_subdirectory(_exercises/starship-ex)
