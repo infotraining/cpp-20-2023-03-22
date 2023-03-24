@@ -1,5 +1,11 @@
 # Szkolenie - C++20 #
 
+## 
+
+Ankieta 
+
+* https://forms.gle/gyhTU74Xz5P3wdeC9
+
 ## Slajdy
 
 * https://infotraining.bitbucket.io/cpp-20

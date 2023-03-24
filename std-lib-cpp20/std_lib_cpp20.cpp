@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 #include <bitset>
+#include <memory>
+#include <array>
+#include <set>
 
 using namespace std::literals;
 
@@ -93,4 +96,124 @@ TEST_CASE("span of bytes")
 	auto const writable_bytes = std::as_writable_bytes(std::span{data});
 	writable_bytes[3] |= std::byte{ 0b1000'0000 };
 	print_as_bytes(data[0], writable_bytes);
+}
+
+///////////////////////////////////////////////////////////////
+// Aggregates in C++20
+
+struct Person
+{
+    int id;
+    std::string name;
+    int age;
+
+    bool operator==(const Person& ) const = default;
+};
+
+TEST_CASE("designated initializers")
+{
+    Person p1{.id = 1, .age = 45};
+
+    CHECK(p1 == Person{1, "", 45});
+
+    //Person p2{.age = 55, .id = 2}; // designator order for field ‘Person::id’ does not match declaration order in ‘Person’
+}
+
+TEST_CASE("Init with ()")
+{
+    Person p1{1, "Kowalski", 44};
+    Person p2(1, "Kowalski", 44);
+
+    Person p3 = {2, "Nowak", 77};
+    // Person p4 = (1, "Kowalski", 44); // ERROR
+
+    auto ptr = std::make_unique<Person>(1, "John Pointer", 33);
+
+    std::array arr1{1, 2, 3, 4, 5};
+    // std::array arr2(1, 2, 3, 4, 5); // ERROR - {} required
+}
+
+template <typename T1, typename T2>
+struct ValuePair
+{
+    T1 fst;
+    T2 snd;
+};
+
+// template <typename T1, typename T2>
+// ValuePair(T1, T2) -> ValuePair<T1, T2>;
+
+TEST_CASE("CTAD")
+{
+    ValuePair vp1{1, "text"}; // ValuePair<int, const char*>
+}
+
+
+#include <bit>
+
+//////////////////////////////////////////////////
+// bit operations
+
+template <typename T>
+concept Integral = std::is_integral_v<T>;
+
+template <size_t N>
+concept PowerOf2 = std::has_single_bit(N);
+
+template <typename T>
+concept Addable = requires(T a, T b) { a + b; };
+
+static_assert(PowerOf2<1024>);
+
+template <typename TContainer, typename TValue>
+    // klauzula
+    requires    
+        // wyrażenie requires
+        requires { typename TContainer::value_type; }
+void append(TContainer& container, TValue value)
+{
+    if constexpr(requires { container.push_back(value); })
+    {
+        container.push_back(value);
+    }
+    else
+        container.insert(value);
+}
+
+
+template <typename T, std::unsigned_integral auto N>  
+    requires PowerOf2<N>
+struct Buffer
+{
+    T values[N];
+};
+
+TEST_CASE("bit operations")
+{
+    static_assert(std::has_single_bit(1024U));
+
+    Buffer<std::byte, 1024U> buffer;
+
+    std::set<int> mset;
+
+    append(mset, 42);
+}
+
+///////////////////////////////////////////////////////////////
+// Lambdas in C++20
+
+TEST_CASE("lambda expressions")
+{
+    auto l1 = [](auto& coll, auto&& value) { coll.push_back(std::forward<decltype(value)>(value)); };
+
+    auto l2 = []<typename T, typename TValue>(std::vector<T>& coll, TValue&& value) { coll.push_back(std::forward<TValue>(value)); };
+
+    auto cmp_desc = [](const auto& a, const auto& b) { return a > b; };
+
+    decltype(cmp_desc) another_cmp_desc; // new in C++20
+
+    // std::set<int, decltype(cmp_desc)> mset_desc{{1, 2, 3, 4, 5, 6}, cmp_desc}; // Before C++20
+    std::set<int, decltype(cmp_desc)> mset_desc = {1, 2, 3, 4, 5, 6} ; // Since C++20
+
+    Helpers::print(mset_desc, "mset_desc");
 }
