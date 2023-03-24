@@ -190,7 +190,7 @@ TEST_CASE("borrowed iterator")
 ///////////////////////////////////////////////////////
 // Exercise
 
-std::pair<std::string_view, std::string_view> split(const std::string& line, std::string_view separator = "/")
+std::pair<std::string_view, std::string_view> split(const std::string_view& line, std::string_view separator = "/")
 {
     std::pair<std::string_view, std::string_view> result;
 
@@ -201,6 +201,21 @@ std::pair<std::string_view, std::string_view> split(const std::string& line, std
     }
 
     return result;
+}
+
+TEST_CASE("split")
+{
+    std::string s1 = "324/44";
+    CHECK(split(s1) == std::pair{"324"sv, "44"sv});
+
+    std::string s2 = "4343";
+    CHECK(split(s2) == std::pair{""sv, ""sv});
+
+    std::string s3 = "345/";
+    CHECK(split(s3) == std::pair{"345"sv, ""sv});
+
+    std::string s4 = "/434";
+    CHECK(split(s3) == std::pair{""sv, "434"sv});
 }
 
 TEST_CASE("Exercise - ranges")
@@ -220,7 +235,11 @@ TEST_CASE("Exercise - ranges")
         "6/six"
     };
 
-    auto result = lines;
+    auto result = lines 
+                    | std::views::drop_while([](const std::string& s) { return s.starts_with("#"); })
+                    | std::views::filter([](const std::string &s){ return s != "\n"; })
+                    | std::views::transform([](const std::string& s) { return split(s); })
+                    | std::views::elements<1>;
 
     auto expected_result = {"one"s, "two"s, "three"s, "four"s, "five"s, "six"s};
 
